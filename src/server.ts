@@ -213,6 +213,7 @@ export class ChatAgent extends AIChatAgent<Env> {
           },
         }),
       },
+      toolChoice: "auto",
       stopWhen: stepCountIs(5),
       onFinish,
     });
