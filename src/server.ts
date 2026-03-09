@@ -185,8 +185,51 @@ Use ONLY the data above when answering. Do not make up events or statistics.`;
   }
 }
 
+// Format a raw route count into "918K" or "1.2M" for the status bar
+function formatRoutes(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return String(n);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    // /api/stats — powers the live status bar at the bottom of the UI
+    if (url.pathname === "/api/stats") {
+      const [routeRes, outageRes] = await Promise.allSettled([
+        radarFetch("/radar/bgp/route-stats", env.CLOUDFLARE_RADAR_TOKEN),
+        radarFetch("/radar/annotations/outages", env.CLOUDFLARE_RADAR_TOKEN, { limit: "50" }),
+      ]);
+
+      let routes = 0;
+      let outageCount = 0;
+
+      if (routeRes.status === "fulfilled") {
+        const d = routeRes.value as { result?: { stats?: { totalRoutes?: number }; meta?: { totalIPv4RoutesAdvertised?: number } } };
+        routes =
+          d?.result?.stats?.totalRoutes ??
+          d?.result?.meta?.totalIPv4RoutesAdvertised ??
+          0;
+      }
+
+      if (outageRes.status === "fulfilled") {
+        const d = outageRes.value as { result?: { annotations?: { outages?: unknown[] } } };
+        outageCount = d?.result?.annotations?.outages?.length ?? 0;
+      }
+
+      return new Response(
+        JSON.stringify({
+          routes: routes > 0 ? formatRoutes(routes) : "—",
+          outages: outageCount > 0 ? String(outageCount) : "0",
+          updated: new Date().toUTCString(),
+        }),
+        { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } }
+      );
+    }
+
+    // All other requests: try agent routing first, then serve static assets
     return (
       (await routeAgentRequest(request, env)) ??
       env.ASSETS.fetch(request)

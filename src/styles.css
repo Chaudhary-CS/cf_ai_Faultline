@@ -557,6 +557,107 @@ html, body {
   50% { opacity: 0.8; }
 }
 
+/* ── Toast notification ───────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 20px;
+  z-index: 100;
+  animation: toastIn 0.2s ease;
+  white-space: nowrap;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Query chips above input ──────────────────────────────────── */
+.query-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 0 10px;
+}
+
+.query-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(246,130,31,0.35);
+  background: transparent;
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.query-chip:hover {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+  transform: translateY(-1px);
+}
+
+.query-chip:active {
+  transform: translateY(0);
+}
+
+/* ── Agent message header (label + actions row) ───────────────── */
+.agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  padding-left: 2px;
+}
+
+.agent-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Severity badges ──────────────────────────────────────────── */
+.severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.severity-critical {
+  background: rgba(239,68,68,0.15);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.severity-warning {
+  background: rgba(234,179,8,0.12);
+  color: var(--yellow);
+  border: 1px solid rgba(234,179,8,0.3);
+}
+
+.severity-normal {
+  background: rgba(34,197,94,0.1);
+  color: var(--green);
+  border: 1px solid rgba(34,197,94,0.25);
+}
+
 /* ── New Chat button ──────────────────────────────────────────── */
 .header-actions {
   display: flex;
