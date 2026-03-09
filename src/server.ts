@@ -23,7 +23,8 @@ export interface Env {
 
 const RADAR_BASE = "https://api.cloudflare.com/client/v4";
 
-// Fetches a Radar endpoint and returns parsed JSON or an error string
+// Fetches a Radar endpoint — returns parsed JSON, or an error object.
+// Logs the full error body on non-200 so I can debug param issues easily.
 async function radarFetch(
   path: string,
   token: string,
@@ -40,8 +41,14 @@ async function radarFetch(
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    if (res.status === 429) return { error: "Rate limited by Radar API" };
-    if (!res.ok) return { error: `Radar API error: HTTP ${res.status}` };
+    if (res.status === 429) return { error: "Rate limited by Radar API — try again in a moment" };
+
+    if (!res.ok) {
+      let body = "";
+      try { body = await res.text(); } catch { /* ignore */ }
+      console.error(`[radar] ${res.status} on ${path}:`, body.slice(0, 300));
+      return { error: `Radar API returned HTTP ${res.status}`, detail: body.slice(0, 200) };
+    }
 
     return await res.json();
   } catch (err) {
@@ -60,54 +67,47 @@ async function fetchRadarContext(
   const fetches: { label: string; path: string; params?: Record<string, string> }[] = [];
 
   // Always grab outages — relevant to almost any internet health question
+  // /radar/annotations/outages uses "limit" (confirmed in Cloudflare docs)
   fetches.push({
     label: "Current Internet Outages & Annotations",
     path: "/radar/annotations/outages",
-    params: { limit: "10" },
+    params: { limit: "10", dateRange: "7d" },
   });
 
-  // BGP hijacks if the query mentions hijack, BGP, or routing
-  if (msg.includes("hijack") || msg.includes("bgp") || msg.includes("route") || msg.includes("routing") || msg.includes("intercept")) {
+  // BGP hijacks — uses "per_page" not "limit", minConfidence is integer 0-10
+  if (
+    msg.includes("hijack") || msg.includes("bgp") ||
+    msg.includes("route") || msg.includes("routing") ||
+    msg.includes("intercept") || msg.includes("broken") ||
+    msg.includes("right now") || msg.includes("unusual") || msg.includes("anomal")
+  ) {
     fetches.push({
       label: "BGP Hijack Events",
       path: "/radar/bgp/hijacks/events",
-      params: { limit: "10" },
+      params: { per_page: "10", dateRange: "7d" },
     });
   }
 
-  // Route leaks if query mentions leak
+  // Route leaks — also uses "per_page"
   if (msg.includes("leak") || msg.includes("bgp") || msg.includes("route")) {
     fetches.push({
       label: "BGP Route Leak Events",
       path: "/radar/bgp/leaks/events",
-      params: { limit: "10" },
+      params: { per_page: "10", dateRange: "7d" },
     });
   }
 
-  // Internet health / routing table stats
+  // Internet health / routing table stats — needs dateRange
   if (
-    msg.includes("health") ||
-    msg.includes("stable") ||
-    msg.includes("global") ||
-    msg.includes("routing table") ||
-    msg.includes("prefix") ||
-    msg.includes("as ")
+    msg.includes("health") || msg.includes("stable") ||
+    msg.includes("global") || msg.includes("routing table") ||
+    msg.includes("prefix") || msg.includes("status")
   ) {
     fetches.push({
       label: "Global BGP Routing Table Stats",
       path: "/radar/bgp/route-stats",
+      params: { dateRange: "1d" },
     });
-  }
-
-  // If it's a general "what's broken" or "anomal" query, add BGP hijacks too
-  if (msg.includes("broken") || msg.includes("anomal") || msg.includes("unusual") || msg.includes("right now")) {
-    if (!fetches.find((f) => f.path.includes("hijacks"))) {
-      fetches.push({
-        label: "BGP Hijack Events",
-        path: "/radar/bgp/hijacks/events",
-        params: { limit: "5" },
-      });
-    }
   }
 
   // Run all fetches in parallel
@@ -199,8 +199,8 @@ export default {
     // /api/stats — powers the live status bar at the bottom of the UI
     if (url.pathname === "/api/stats") {
       const [routeRes, outageRes] = await Promise.allSettled([
-        radarFetch("/radar/bgp/route-stats", env.CLOUDFLARE_RADAR_TOKEN),
-        radarFetch("/radar/annotations/outages", env.CLOUDFLARE_RADAR_TOKEN, { limit: "50" }),
+        radarFetch("/radar/bgp/route-stats", env.CLOUDFLARE_RADAR_TOKEN, { dateRange: "1d" }),
+        radarFetch("/radar/annotations/outages", env.CLOUDFLARE_RADAR_TOKEN, { limit: "50", dateRange: "7d" }),
       ]);
 
       let routes = 0;
