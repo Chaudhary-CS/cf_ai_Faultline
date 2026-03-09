@@ -67,7 +67,7 @@ export function FooterBadge({ onCopyEmail }: FooterBadgeProps) {
         onClick={() => setExpanded(true)}
         aria-label="View contact info"
       >
-        Built by Kartik Chaudhary · Cloudflare SWE Intern Candidate 2026 ·{" "}
+        Built by Kartik Chaudhary · CS @ USF · Dec 2026 ·{" "}
         <span className="footer-badge-cta">→ Let&apos;s talk</span>
       </button>
 

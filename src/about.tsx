@@ -158,8 +158,9 @@ export function AboutPage({ navigate }: AboutPageProps) {
             <h2 className="about-section-heading">## Summary</h2>
             <p className="about-body">
               CS student at the University of South Florida building production systems at internet scale.
-              Built Faultline in <strong>3 hours</strong> entirely on Cloudflare&apos;s native stack as part of a SWE internship application.
-              Seeking Summer 2026 Software Engineering Internship.
+              Built Faultline in <strong>3 hours</strong> entirely on Cloudflare&apos;s native stack —
+              Workers AI, Agents SDK, Durable Objects, Radar API, and Cron Triggers.
+              Graduating December 2026. Open to opportunities.
             </p>
           </div>
 
@@ -342,11 +343,11 @@ export function AboutPage({ navigate }: AboutPageProps) {
 
           {/* ══ SECTION 7: CURRENT STATUS CTA ══════════════ */}
           <div className="cta-card">
-            <h2 className="about-section-heading" style={{ marginBottom: "16px" }}>## Current Status: ACTIVELY SEEKING</h2>
+            <h2 className="about-section-heading" style={{ marginBottom: "16px" }}>## Current Status: OPEN TO OPPORTUNITIES</h2>
             <div className="cta-grid">
               <div className="cta-info">
                 {[
-                  ["Available", "Summer 2026"],
+                  ["Available", "Summer 2026 onwards"],
                   ["Location", "Tampa, FL → Austin, TX → Anywhere"],
                   ["Response", "< 24 hours"],
                   ["GPA", "3.7 · Dean's List"],
