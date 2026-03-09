@@ -1,135 +1,222 @@
-# Faultline — AI-Powered Internet Outage Storyteller
+# cf_ai_faultline — AI-Powered Internet Outage Storyteller
 
 > **Find where the internet breaks.**
 
-Faultline is a conversational AI agent that tells you what's happening on the internet right now, in plain English. Ask it about outages, BGP hijacks, route leaks, or traffic anomalies — it pulls live data from Cloudflare Radar, feeds it to Llama 3.3 running on Workers AI, and responds with clear, human-readable narratives. No dashboards to decode. No jargon walls.
+Faultline is a conversational AI agent that answers plain-English questions about internet health in real time. Ask it about outages, BGP hijacks, route leaks, or traffic anomalies — it pulls live data from Cloudflare Radar, feeds it to Llama 3.3 running on Workers AI, and streams back clear human-readable narratives.
 
-**Live demo:** https://faultline.workers.dev *(deploy your own — see setup below)*
+**Live demo:** https://faultline.kartikchoudhary085.workers.dev
+
+---
+
+## What it does
+
+| Feature | Description |
+|---|---|
+| **Conversational AI** | Full chat interface powered by Llama 3.3 70B on Workers AI |
+| **Live Radar data** | Pulls BGP hijacks, route leaks, outages, and routing table stats from Cloudflare Radar on every query |
+| **ASN/Region Watchlist** | Say "Watch AS13335" — Faultline fetches targeted Radar data for that ASN every query and alerts you if issues are found |
+| **Incident Timeline Generator** | Say "Generate incident report for Iran" — fires 3 parallel Radar fetches and synthesizes a structured post-mortem |
+| **Morning Email Digest** | Daily 9am UTC cron job generates an overnight internet briefing and emails it via Resend |
+| **Persistent sessions** | Full conversation history stored per-session in Durable Objects SQLite |
+| **Severity badges** | Responses are automatically tagged Critical / Warning / Info based on content |
 
 ---
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| LLM | Llama 3.3 70B via **Cloudflare Workers AI** (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`) |
-| Agent + State | **Cloudflare Agents SDK** (`AIChatAgent`) + Durable Objects |
-| Memory | Durable Objects **SQLite** — full conversation history per session |
-| Frontend | React 18 + **Cloudflare Workers Assets** (served from the same Worker) |
-| Data | **Cloudflare Radar API** — live BGP, outage, and traffic data |
+|---|---|
+| **LLM** | `@cf/meta/llama-3.3-70b-instruct-fp8-fast` via Cloudflare Workers AI |
+| **Agent + WebSocket** | Cloudflare Agents SDK — `AIChatAgent` + `useAgentChat` |
+| **Memory / State** | Durable Objects SQLite (conversation history, email subscribers) |
+| **Frontend** | React 19 + TypeScript, served via Cloudflare Workers Assets |
+| **Build** | Vite + `@cloudflare/vite-plugin` |
+| **Data** | Cloudflare Radar API (BGP, outages, routing table, ASN entity info) |
+| **Email** | Resend API (daily digest) |
+| **Cron** | Cloudflare Workers Cron Triggers (`0 9 * * *`) |
 
-Everything runs on Cloudflare. No external services, no VMs, no cold starts.
+Everything runs on Cloudflare. Zero external VMs, zero cold starts.
 
 ---
 
 ## Architecture
 
 ```
-Browser (React + useAgentChat)
-        │  WebSocket
+Browser (React 19 + useAgentChat hook)
+        │  WebSocket (real-time streaming)
         ▼
-┌─────────────────────────────────────────────────┐
-│            Cloudflare Worker (server.ts)         │
-│                                                  │
-│  /api/chat/:sessionId  ──►  ChatAgent DO         │
-│  (everything else)     ──►  Workers Assets       │
-└──────────────┬──────────────────────────────────┘
-               │  Durable Object (per session)
-               ▼
-┌─────────────────────────────────────────────────┐
-│  ChatAgent extends AIChatAgent                   │
-│  - SQLite conversation history (auto)            │
-│  - streamText() via Workers AI binding           │
-│  - 5 Radar tool calls via fetch()                │
-└──────┬────────────────────┬───────────────────┘
-       │ Workers AI         │ Cloudflare Radar API
-       ▼                    ▼
-  Llama 3.3 70B        /radar/bgp/hijacks/events
-  (fp8-fast)           /radar/bgp/leaks/events
-                       /radar/annotations/outages
-                       /radar/bgp/route-stats
+┌──────────────────────────────────────────────────────┐
+│               Cloudflare Worker (server.ts)           │
+│                                                       │
+│  /agent/ChatAgent/:sessionId  ──►  ChatAgent DO       │
+│  /api/stats                   ──►  Live Radar stats   │
+│  /api/subscribe               ──►  DigestAgent DO     │
+│  (everything else)            ──►  Workers Assets     │
+└─────────────────┬────────────────────────────────────┘
+                  │  Two Durable Object classes
+        ┌─────────┴──────────┐
+        ▼                    ▼
+┌───────────────┐   ┌────────────────────┐
+│  ChatAgent    │   │  DigestAgent        │
+│  (per-session)│   │  (global singleton) │
+│  - Chat SQL   │   │  - Subscribers SQL  │
+│  - streamText │   │  - fetch() HTTP RPC │
+└───────┬───────┘   └────────────────────┘
+        │  RAG pattern: pre-fetch Radar data,
+        │  inject into system prompt
+        ▼
+┌──────────────────────────────────────────────────────┐
+│          fetchRadarContext()  /  fetchIncidentData()  │
+│                                                       │
+│  Standard:    /radar/annotations/outages              │
+│               /radar/bgp/hijacks/events               │
+│               /radar/bgp/leaks/events                 │
+│               /radar/bgp/route-stats                  │
+│                                                       │
+│  Watchlist:   /radar/bgp/hijacks/events?affectedAsn=X │
+│               /radar/bgp/leaks/events?involvedAsn=X   │
+│               /radar/entities/asns/X                  │
+│               /radar/annotations/outages?location=XX  │
+└──────────────────────────────────────────────────────┘
+        │
+        ▼
+   Llama 3.3 70B (fp8-fast)
+   via Workers AI binding
 ```
 
----
+### Why RAG instead of tool calling?
 
-## Example Queries
-
-- *"What's broken on the internet right now?"*
-- *"Are there any BGP hijacks happening today?"*
-- *"What happened to internet traffic in Asia yesterday?"*
-- *"Show me recent route leaks"*
-- *"Is there anything unusual with internet traffic right now?"*
-- *"How healthy is the global routing table?"*
+During development I found that `llama-3.3-70b-instruct-fp8-fast` in streaming mode via the Workers AI binding outputs tool calls as raw JSON text rather than executing them. To keep the architecture reliable, I switched to a **RAG (Retrieval-Augmented Generation)** pattern: detect the user's intent from keywords, pre-fetch the relevant Radar endpoints in parallel, and inject the data directly into the system prompt. The LLM then narrates real data rather than deciding what to fetch.
 
 ---
 
-## Setup
+## Try it live
+
+**URL:** https://faultline.kartikchoudhary085.workers.dev
+
+### Example queries to test every feature
+
+**Basic internet health:**
+- `"What's broken on the internet right now?"`
+- `"Any BGP hijacks today?"`
+- `"Internet health status"`
+- `"Recent route leaks"`
+- `"Traffic anomalies in Asia"`
+
+**Watchlist (Feature 1):**
+- `"Watch AS13335"` → adds Cloudflare's ASN to watchlist, pulls targeted Radar data on every future query
+- `"Monitor Iran"` → adds Iran by country, fetches IR-specific outage data
+- `"Show my watchlist"` → opens the watchlist panel
+- `"Remove Iran from watchlist"`
+- Ask any question while watchlist is active → response will explicitly mention the watched entity's status
+
+**Incident Timeline (Feature 2):**
+- `"Generate incident report for Iran"`
+- `"Build timeline of Cuba outage"`
+- `"Post-mortem for Turkey internet shutdown"`
+- `"What happened to AS13335 recently?"`
+
+**Email Digest (Feature 3):**
+- Click `"📧 Get daily digest"` below the input → enter email → receive daily 9am UTC briefing
+- Or type: `"Subscribe you@email.com to digest"`
+
+---
+
+## Local setup
 
 ### Prerequisites
-- [Node.js](https://nodejs.org) 18+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/): `npm install -g wrangler`
-- A Cloudflare account (free tier works)
-- A Cloudflare Radar API token — get one at [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) with `Account:Cloudflare Radar:Read` permission
 
-### Install & Deploy
+- [Node.js](https://nodejs.org) 18+
+- A Cloudflare account (free tier works)
+- Cloudflare Radar API token — create at [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) with `Account → Cloudflare Radar → Read` permission
+- *(Optional)* Resend API key for email digest — free tier at [resend.com](https://resend.com) (3,000 emails/month)
+
+### Install
 
 ```bash
-# Clone the repo
-git clone https://github.com/Chaudhary-CS/Faultline.git
-cd Faultline
-
-# Install deps
+git clone https://github.com/Chaudhary-CS/cf_ai_faultline.git
+cd cf_ai_faultline
 npm install
+```
 
-# Set your Radar API token as a secret
+### Configure secrets
+
+```bash
+# Required: Cloudflare Radar API token
 npx wrangler secret put CLOUDFLARE_RADAR_TOKEN
 # paste your token when prompted
 
-# Deploy to Cloudflare
-npx wrangler deploy
+# Optional: Resend API key (only needed for email digest)
+npx wrangler secret put RESEND_API_KEY
 ```
 
-### Local Development
+For local dev, create `.dev.vars`:
+
+```
+CLOUDFLARE_RADAR_TOKEN=your_token_here
+```
+
+### Run locally
 
 ```bash
-npx wrangler dev --port 5173
+npm run dev
 ```
 
-Then open http://localhost:5173
+Open http://localhost:5173 — note: Workers AI requires a Cloudflare account. The dev server proxies AI calls to Cloudflare remotely.
+
+### Deploy to Cloudflare
+
+```bash
+npm run deploy
+```
+
+Your Worker will be live at `https://faultline.<your-subdomain>.workers.dev`.
 
 ---
 
-## How it Works
+## Project structure
 
-1. **User sends a message** via the React chat UI over WebSocket
-2. **ChatAgent** (Durable Object) receives it, stores it in SQLite via Agents SDK
-3. **streamText()** calls Llama 3.3 on Workers AI with the full conversation history
-4. **Llama 3.3 decides** which Radar tool(s) to call based on the question
-5. **Radar API** returns live BGP/outage data as JSON
-6. **Llama 3.3 synthesizes** the raw data into a plain-English narrative
-7. **Response streams** back to the browser token-by-token via the Agents SDK
+```
+src/
+  server.ts        # Worker entrypoint — ChatAgent, DigestAgent, fetch handler, scheduled cron
+  app.tsx          # React chat UI — all features, watchlist state, incident cards
+  client.tsx       # React entry point
+  styles.css       # Cloudflare-aesthetic dark theme
 
-Conversation history persists indefinitely per browser session via Durable Objects SQLite — no external database needed.
-
----
-
-## Radar Tools
-
-| Tool | Radar Endpoint | Used For |
-|------|---------------|----------|
-| `getCurrentOutages` | `GET /radar/annotations/outages` | Current internet outages |
-| `getBGPHijacks` | `GET /radar/bgp/hijacks/events` | BGP route hijacking events |
-| `getRouteLeaks` | `GET /radar/bgp/leaks/events` | BGP route leak events |
-| `getTrafficAnomalies` | `GET /radar/annotations/outages?location=X` | Regional traffic anomalies |
-| `getInternetHealth` | `GET /radar/bgp/route-stats` | Global routing table health |
+index.html         # SPA shell (title + favicon)
+vite.config.ts     # Vite + @cloudflare/vite-plugin
+wrangler.toml      # Worker config — DOs, AI binding, cron, assets
+```
 
 ---
 
-## Built By
+## Radar endpoints used
+
+| Endpoint | Used for |
+|---|---|
+| `GET /radar/annotations/outages` | Current internet outages (global + location-filtered) |
+| `GET /radar/bgp/hijacks/events` | BGP hijack events (global + ASN-filtered) |
+| `GET /radar/bgp/leaks/events` | BGP route leak events (global + ASN-filtered) |
+| `GET /radar/bgp/route-stats` | Global routing table stats |
+| `GET /radar/entities/asns/:asn` | ASN entity info (name, org, country) |
+
+---
+
+## Cloudflare products used
+
+- **Workers** — serverless execution
+- **Workers AI** — Llama 3.3 70B inference
+- **Durable Objects** — persistent chat sessions + subscriber store (SQLite)
+- **Cloudflare Agents SDK** — `AIChatAgent`, WebSocket streaming, `useAgentChat`
+- **Workers Assets** — serving the React frontend
+- **Cron Triggers** — daily email digest at 9am UTC
+
+---
+
+## Built by
 
 **Kartik Chaudhary**
-- Web: [getnav.app](https://getnav.app)
 - GitHub: [github.com/Chaudhary-CS](https://github.com/Chaudhary-CS)
 
-**Built for:** Cloudflare SWE Internship 2026 application
-**Repository:** [github.com/Chaudhary-CS/Faultline](https://github.com/Chaudhary-CS/Faultline)
+**Submission for:** Cloudflare AI Challenge 2026
+**Repository:** [github.com/Chaudhary-CS/cf_ai_faultline](https://github.com/Chaudhary-CS/cf_ai_faultline)

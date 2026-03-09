@@ -492,9 +492,9 @@ html, body {
 .input-footer-text {
   font-size: 11px;
   color: var(--text-dim);
-  text-align: center;
-  margin-top: 8px;
+  text-align: right;
   letter-spacing: 0.2px;
+  flex: 1;
 }
 
 /* ── Status bar ───────────────────────────────────────────────── */
@@ -641,21 +641,21 @@ html, body {
 }
 
 .severity-critical {
-  background: rgba(239,68,68,0.15);
-  color: var(--red);
-  border: 1px solid rgba(239,68,68,0.3);
+  background: #ef4444;
+  color: #fff;
+  border: 1px solid #ef4444;
 }
 
 .severity-warning {
-  background: rgba(234,179,8,0.12);
-  color: var(--yellow);
-  border: 1px solid rgba(234,179,8,0.3);
+  background: #eab308;
+  color: #000;
+  border: 1px solid #eab308;
 }
 
-.severity-normal {
-  background: rgba(34,197,94,0.1);
-  color: var(--green);
-  border: 1px solid rgba(34,197,94,0.25);
+.severity-info {
+  background: #3f3f46;
+  color: #a1a1aa;
+  border: 1px solid #52525b;
 }
 
 /* ── New Chat button ──────────────────────────────────────────── */
@@ -740,6 +740,329 @@ html, body {
   color: var(--orange);
   background: var(--orange-glow);
 }
+
+/* ── Watchlist pill in header ─────────────────────────────────── */
+.watchlist-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(246,130,31,0.4);
+  background: var(--orange-glow);
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.watchlist-pill:hover {
+  background: var(--orange-dim);
+  border-color: var(--orange);
+}
+
+/* ── Watchlist panel overlay ──────────────────────────────────── */
+.watchlist-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 80px 20px 0;
+}
+
+.watchlist-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  width: 280px;
+  padding: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  animation: fadeIn 0.15s ease;
+}
+
+.watchlist-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.watchlist-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.watchlist-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.1s;
+}
+.watchlist-close:hover { color: var(--text); }
+
+.watchlist-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.watchlist-empty code {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--orange);
+  font-size: 11px;
+}
+
+.watchlist-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.watchlist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.watchlist-type {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.watchlist-type-asn {
+  background: rgba(246,130,31,0.15);
+  color: var(--orange);
+  border: 1px solid rgba(246,130,31,0.3);
+}
+.watchlist-type-country {
+  background: rgba(34,197,94,0.1);
+  color: var(--green);
+  border: 1px solid rgba(34,197,94,0.25);
+  font-size: 13px;
+}
+
+.watchlist-value {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.watchlist-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  transition: color 0.1s;
+}
+.watchlist-remove:hover { color: var(--red); }
+
+.watchlist-clear-btn {
+  width: 100%;
+  padding: 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.watchlist-clear-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ── Watchlist alert message card ─────────────────────────────── */
+.message-watchlist-alert .message-bubble {
+  border-color: rgba(239,68,68,0.5) !important;
+  border-left-color: var(--red) !important;
+  box-shadow: 0 0 0 1px rgba(239,68,68,0.15);
+  animation: alertPulse 2s ease-in-out 3;
+}
+
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(239,68,68,0.15); }
+  50% { box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+}
+
+.alert-indicator {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--red);
+  letter-spacing: 0.3px;
+  margin-left: 4px;
+}
+
+/* ── Incident report card ─────────────────────────────────────── */
+.message-incident .message-bubble {
+  border-top: 3px solid var(--orange) !important;
+  border-left: 1px solid var(--border) !important;
+  background: var(--surface-2) !important;
+}
+
+.incident-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+.incident-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.incident-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: var(--orange-glow);
+}
+
+/* ── Incident loading steps ───────────────────────────────────── */
+.incident-loading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.incident-step {
+  font-size: 12px;
+  font-weight: 500;
+}
+.incident-step-done {
+  color: var(--green);
+}
+.incident-step-active {
+  color: var(--orange);
+  animation: pulse-orange 1s ease-in-out infinite;
+}
+
+/* ── Incident report heading ──────────────────────────────────── */
+.msg-h1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  margin-top: 4px;
+  letter-spacing: -0.3px;
+}
+
+.msg-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 8px 0;
+}
+
+/* ── Email digest subscribe ───────────────────────────────────── */
+.footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.digest-link {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: color 0.15s;
+}
+.digest-link:hover { color: var(--orange); }
+
+.subscribe-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.email-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 10px;
+  outline: none;
+  width: 180px;
+  transition: border-color 0.15s;
+}
+.email-input:focus { border-color: var(--orange); }
+.email-input::placeholder { color: var(--text-dim); }
+
+.subscribe-btn {
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 1px solid var(--orange);
+  background: var(--orange);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.subscribe-btn:hover { background: #e8730f; }
+
+.cancel-link {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+.cancel-link:hover { color: var(--text-muted); }
 
 /* ── Tool completion badge ────────────────────────────────────── */
 /* Shows up inline in agent message when a Radar tool finishes */

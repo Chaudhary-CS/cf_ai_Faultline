@@ -3,25 +3,37 @@ main = "src/server.ts"
 compatibility_date = "2026-03-09"
 compatibility_flags = ["nodejs_compat"]
 
-# Workers AI binding — talks to Llama 3.3 on Cloudflare's GPU
+# Workers AI — Llama 3.3 70B on Cloudflare's GPU
 [ai]
 binding = "AI"
 
-# Durable Objects for persistent chat sessions per browser tab
+# ChatAgent — per-session chat history + watchlist context
 [[durable_objects.bindings]]
 name = "ChatAgent"
 class_name = "ChatAgent"
 
-# DO migration — required first time you deploy a new SQLite DO class
+# DigestAgent — global email subscriber store (fixed "global" instance)
+[[durable_objects.bindings]]
+name = "DigestAgent"
+class_name = "DigestAgent"
+
+# Migrations — v1 created ChatAgent, v2 adds DigestAgent
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChatAgent"]
 
-# Radar API token — set via: npx wrangler secret put CLOUDFLARE_RADAR_TOKEN
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["DigestAgent"]
+
 [vars]
 NODE_ENV = "production"
 
-# Assets served by @cloudflare/vite-plugin in dev, wrangler in prod
+# Daily 9am UTC cron — fires scheduled() to send morning digest
+[triggers]
+crons = ["0 9 * * *"]
+
+# Static assets served via Vite build
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
