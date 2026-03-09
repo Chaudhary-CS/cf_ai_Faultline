@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Find where the internet breaks. AI-powered internet outage storyteller built on Cloudflare Radar + Workers AI." />
+    <meta property="og:title" content="Faultline — Internet Outage Storyteller" />
+    <meta property="og:description" content="Ask plain-English questions about internet health and outages. Powered by Cloudflare Radar + Llama 3.3." />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Faultline — Internet Pulse</title>
+    <!-- Favicon inline SVG via data URI — orange radar dot -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' stroke='%23f6821f' stroke-width='2' fill='none' stroke-dasharray='3 4'/><circle cx='16' cy='16' r='5' fill='%23f6821f'/></svg>" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Vite/wrangler will inject the bundled JS here -->
+    <script type="module" src="/src/client.tsx"></script>
+  </body>
+</html>
